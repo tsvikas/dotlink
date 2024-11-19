@@ -17,6 +17,9 @@ class VerboseLevel(enum.IntEnum):
     LINK_OK = 3
 
 
+MAX_VERBOSE = max(VerboseLevel)
+
+
 def safe_remove(p: Path, verbose_level: VerboseLevel) -> Path:
     """Rename `p` to an unused name. Works with files and directories."""
     p = p.absolute()
@@ -55,7 +58,7 @@ def install_links(
     locations: dict[Path, Path | None],
     src_dir: Path,
     dst_dir: Path = Path.home(),
-    verbose_level: VerboseLevel = max(VerboseLevel),
+    verbose_level: VerboseLevel = MAX_VERBOSE,
 ) -> None:
     """Install all links in locations
 
@@ -105,13 +108,13 @@ def main() -> None:
         "--quiet",
         action="count",
         default=0,
-        help=f"Increase quietness level (can be repeated up to {int(max(VerboseLevel))} times)",
+        help=f"Increase quietness level (can be repeated up to {int(MAX_VERBOSE)} times)",
     )
     args = parser.parse_args()
     src_dir = args.SRC_DIR
     locations = read_locations_file(src_dir / "locations.toml")
     dst_dir = args.dest_dir
-    verbose_level = VerboseLevel(max(VerboseLevel) - args.quiet)
+    verbose_level = VerboseLevel(MAX_VERBOSE - args.quiet)
     install_links(locations, src_dir, dst_dir, verbose_level)
 
 
