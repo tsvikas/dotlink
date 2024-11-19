@@ -5,10 +5,9 @@ safely replaces all local files with a softlink to these files.
 
 import argparse
 import enum
+import tomllib
 from itertools import count
 from pathlib import Path
-
-import tomllib
 
 
 class VerboseLevel(enum.IntEnum):
