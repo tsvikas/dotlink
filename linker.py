@@ -6,7 +6,7 @@ files. It's particularly useful for managing dotfiles or other configuration
 files that need to be linked from a central location to various places in the
 filesystem.
 
-The module will:
+Features:
 - Read link specifications from TOML configuration files
 - Create softlinks while safely backing up existing files
 - Remove files (with backup) when needed
@@ -14,22 +14,32 @@ The module will:
 
 Example usage:
     # From command line:
-    softlink_installer.py ~/my-dotfiles
+    $ python softlink_installer.py ~/my-dotfiles
+    $ python softlink_installer.py ~/my-dotfiles -d /custom/install/path -q
 
     # As a module:
+    from pathlib import Path
+    from softlink_installer import install_links
+
     locations = {Path.home() / ".config/app"): Path("config/app")}
     install_links(locations, Path.home() / "my-dotfiles", Path.home())
 
-The locations.toml file should be structured with:
-- the link location (relative to the install base dir) as key
-- the link target (relative to the toml file parent directory) as value,
-  or a blank target to remove.
-
-for example:
+Configuration:
+    The locations.toml file should be structured as follows:
+    ```toml
+    # Link destination = Link source (relative to toml file location)
     ".bashrc" = "rcfiles/bashrc"
     ".config/app" = "config_folder_for_app"
     ".local/bin/my-script" = "my-script.py"
+    # Empty string means remove the file (with backup)
     ".oldfile" = ""
+    ```
+
+Notes:
+    - All paths in the TOML file are relative to either the installation base
+      directory (destinations) or the TOML file's parent directory (sources)
+    - Existing files at destination paths are automatically backed up with
+      .bkp_N suffixes where N is an incrementing number
 """
 
 import argparse
@@ -45,8 +55,8 @@ class VerboseLevel(enum.IntEnum):
     Attributes:
         NOTHING (0): No output
         RENAME_FILE (1): Show file rename operations
-        CREATE_LINK (2): Show link creation operations
-        LINK_OK (3): Show when links are already correct
+        CREATE_LINK (2): Show as above, plus link creation operations.
+        LINK_OK (3): Show as above, plus specify existing links that don't need to be changed.
     """
 
     NOTHING = 0
@@ -183,11 +193,11 @@ def read_locations_file(toml_file: Path) -> dict[Path, Path | None]:
 def main() -> None:
     """Command-line interface for the link installer.
 
-    Processes command-line arguments and calls read_locations_file() and
-    install_links() with appropriate parameters. The source directory must
-    contain a locations.toml file specifying the links to create.
+    Provides a command-line interface to read a locations.toml file and install
+    the specified links. The source directory must contain a locations.toml file
+    specifying the links to create.
 
-    Command-line arguments:
+    Command-line Arguments:
         SRC_DIR: Directory containing source files and locations.toml
         -d/--dest_dir: Directory to install links into (default: home directory)
         -q/--quiet: Reduce verbosity (can be specified multiple times)
