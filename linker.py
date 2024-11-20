@@ -36,18 +36,31 @@ def safe_remove(p: Path, verbose_level: VerboseLevel) -> Path:
 
 
 def safe_link(src: Path, dst: Path, verbose_level: VerboseLevel) -> None:
-    """Replace `dst` with a link to `src`, and save a backup of `dst`."""
+    """Create a symbolic link from dst to src, safely handling existing files.
+
+    If dst already exists, it will be backed up using safe_remove() before
+    creating the new link. If dst is already a correct symlink to src,
+    no action is taken.
+
+    Args:
+        src: Path to the source file/directory to link to
+        dst: Path where the symbolic link should be created
+        verbose_level: Controls the amount of feedback printed during operation
+
+    Raises:
+        ValueError: If src doesn't exist or can't be found
+    """
     src = src.absolute()
     dst = dst.absolute()
     if not src.exists(follow_symlinks=True):
         # TODO: maybe here i want to mv dst -> src instead?
-        raise ValueError(f"src {src} not fount")
+        raise ValueError(f"src {src} not found")
     if dst.is_symlink() and dst.readlink() == src:
         if verbose_level >= VerboseLevel.LINK_OK:
             print(f"exists   {dst} <- {src}")
         return
     if dst.exists(follow_symlinks=False):
-        safe_remove(dst)
+        safe_remove(dst, verbose_level)
     if verbose_level >= VerboseLevel.CREATE_LINK:
         print(f"linking  {dst} <- {src}")
     dst.parent.mkdir(exist_ok=True, parents=True)
