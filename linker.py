@@ -14,15 +14,19 @@ Features:
 
 Example usage:
     # From command line:
+    ``` bash
     $ python softlink_installer.py ~/my-dotfiles
-    $ python softlink_installer.py ~/my-dotfiles -d /custom/install/path -q
+    $ python softlink_installer.py ~/my-dotfiles -d /custom/install/path -qq
+    ```
 
     # As a module:
+    ```python
     from pathlib import Path
     from softlink_installer import install_links
 
     locations = {Path.home() / ".config/app"): Path("config/app")}
     install_links(locations, Path.home() / "my-dotfiles", Path.home())
+    ```
 
 Configuration:
     The locations.toml file should be structured as follows:
@@ -105,9 +109,6 @@ def safe_link(src: Path, dst: Path, verbose_level: VerboseLevel) -> None:
         src: Path to the source file/directory to link to
         dst: Path where the symbolic link should be created
         verbose_level: Controls the amount of feedback printed during operation
-
-    Raises:
-        ValueError: If src doesn't exist or can't be found
     """
     src = src.absolute()
     dst = dst.absolute()
@@ -143,9 +144,6 @@ def install_links(
         src_dir: Base directory containing source files
         dst_dir: Base directory where links will be created (default: user's home)
         verbose_level: Controls the amount of feedback printed
-
-    Raises:
-        ValueError: If attempting to link files outside src_dir or dst_dir
     """
     # resolve locations
     locations_full = {
@@ -181,10 +179,12 @@ def read_locations_file(toml_file: Path) -> dict[Path, Path | None]:
         Dictionary mapping destination Paths to source Paths or None
 
     Example TOML content:
+        ```toml
         ".bashrc" = "rcfiles/bashrc"
         ".config/app" = "config_folder_for_app"
         ".local/bin/my-script" = "my-script.py"
         ".oldfile" = ""
+        ```
     """
     data = tomllib.load(Path(toml_file).open("rb"))
     return {Path(dst): Path(src) if src else None for dst, src in data.items()}
