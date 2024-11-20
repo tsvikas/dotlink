@@ -74,10 +74,10 @@ def install_links(
         if src is None:
             if dst.exists(follow_symlinks=False):
                 safe_remove(dst, verbose_level)
-            return
+            continue
         # or link it
         src = src_dir / src
-        if dst_dir not in dst.parents:
+        if src_dir not in src.parents:
             raise ValueError(f"only linking files from {src_dir}, not {src}")
         safe_link(src_dir / src, dst, verbose_level)
 
