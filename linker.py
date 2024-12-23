@@ -112,17 +112,18 @@ def safe_link(src: Path, dst: Path, verbose_level: VerboseLevel) -> None:
     """
     src = src.absolute()
     dst = dst.absolute()
+    is_dir = "/" if src.is_dir() else ""
     if not src.exists(follow_symlinks=True):
         # TODO: maybe here i want to mv dst -> src instead?
         raise ValueError(f"src {src} not found")
     if dst.is_symlink() and dst.readlink() == src:
         if verbose_level >= VerboseLevel.LINK_OK:
-            print(f"exists   {dst} <- {src}")
+            print(f"exists   {dst} <- {src}{is_dir}")
         return
     if dst.exists(follow_symlinks=False):
         safe_remove(dst, verbose_level)
     if verbose_level >= VerboseLevel.CREATE_LINK:
-        print(f"linking  {dst} <- {src}")
+        print(f"linking  {dst} <- {src}{is_dir}")
     dst.parent.mkdir(exist_ok=True, parents=True)
     dst.symlink_to(src)
 
