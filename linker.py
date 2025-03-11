@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.13"
+# dependencies = []
+# ///
 """Softlink Installation Utility
 
 This module provides functionality to safely install softlinks (symbolic links)
