@@ -1,50 +1,106 @@
+exclude: "^$"
+ci:
+  skip: []
+  autoupdate_schedule: quarterly
+
 repos:
+  # General hooks
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
     hooks:
-      # filesystem
+      # Filesystem
+      - id: check-illegal-windows-names
       - id: check-case-conflict
       - id: check-executables-have-shebangs
       - id: check-shebang-scripts-are-executable
-      # git
+      # Git related
       - id: check-added-large-files
       - id: check-merge-conflict
-      # secrets
+      - id: check-vcs-permalinks
+      - id: forbid-submodules
+      # Security
       - id: detect-private-key
-      # files
+      # Text formatting
       - id: end-of-file-fixer
+      - id: fix-byte-order-marker
       - id: mixed-line-ending
         args: [--fix=lf]
       - id: trailing-whitespace
-      # python
+      # Python
       - id: check-ast
       - id: check-docstring-first
       - id: debug-statements
+      - id: name-tests-test
+        args: [--pytest-test-first]
       - id: requirements-txt-fixer
-      # filetypes
-      - id: check-json
-        exclude: ipynb
+      # Symlinks
       - id: check-symlinks
+      - id: destroyed-symlinks
+      # File validation
+      - id: check-json
       - id: check-toml
-      - id: check-yaml
       - id: check-xml
+      - id: check-yaml
+      # File formatting
       - id: pretty-format-json
-  - repo: https://github.com/Lucas-C/pre-commit-hooks
-    rev: v1.5.5
+        exclude_types: [jupyter]
+  - repo: https://github.com/pre-commit/pygrep-hooks
+    rev: v1.10.0
     hooks:
-      - id: forbid-tabs
+      - id: python-check-blanket-noqa
+      - id: python-check-blanket-type-ignore
+      - id: python-check-mock-methods
+      - id: python-no-eval
+      - id: python-no-log-warn
+      - id: python-use-type-annotations
+      - id: text-unicode-replacement-char
+
+  # Spell checking
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.4.1
+    hooks:
+      - id: codespell
+
+  # Markdown files
+  - repo: https://github.com/hukkin/mdformat
+    rev: 0.7.22
+    hooks:
+      - id: mdformat
+        additional_dependencies:
+          - mdformat-gfm
+          - mdformat-frontmatter
+          - mdformat-footnote
+          - mdformat-gfm-alerts
+
+  # Python files
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.9.9
+    hooks:
+      - id: ruff
+        alias: ruff-isort
+        name: ruff isort
+        args: [--select, I001, --fix]
+      - id: ruff-format
+      - id: ruff
+        alias: ruff-check
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.15.0
+    hooks:
+      - id: mypy
+
+  # Jupyter notebook files
   - repo: local
     hooks:
       - id: forbid-ipynb
         name: forbid ipynb
         entry: filenames must not end in .ipynb
         language: fail
-        files: '\.ipynb$'
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.9.9
+        types: [jupyter]
+
+  # YAML files
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.36.0
     hooks:
-      - id: ruff
-        alias: ruff-isort
-        args: ["--select", "I001", "--fix"]
-      - id: ruff-format
-      - id: ruff
+      - id: yamllint
+
+  # Project-specific custom hooks
