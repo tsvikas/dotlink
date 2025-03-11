@@ -24,8 +24,8 @@ Example usage:
     from pathlib import Path
     from softlink_installer import install_links
 
-    locations = {Path.home() / ".config/app"): Path("config/app")}
-    install_links(locations, Path.home() / "my-dotfiles", Path.home())
+    locations = {Path.home() / ".config/app": Path.home() / "dotfiles/app"}
+    install_links(locations)
     ```
 
 Configuration:
@@ -44,6 +44,7 @@ Notes:
       directory (destinations) or the TOML file's parent directory (sources)
     - Existing files at destination paths are automatically backed up with
       .bkp_N suffixes where N is an incrementing number
+
 """
 
 import argparse
@@ -60,7 +61,8 @@ class VerboseLevel(enum.IntEnum):
         NOTHING (0): No output
         RENAME_FILE (1): Show file rename operations
         CREATE_LINK (2): Show as above, plus link creation operations.
-        LINK_OK (3): Show as above, plus specify existing links that don't need to be changed.
+        LINK_OK (3): Show as above, plus specify already existing links.
+
     """
 
     NOTHING = 0
@@ -84,9 +86,12 @@ def safe_remove(p: Path, verbose_level: VerboseLevel) -> Path:
 
     Returns:
         Path: The new path where the file/directory was moved to
+
     """
-    p = p.absolute()
-    assert p.exists(follow_symlinks=False)
+    if not p.is_absolute():
+        raise ValueError(f"{p} is not absolute")
+    if not p.exists(follow_symlinks=False):
+        raise ValueError(f"{p} does not exist")
     for i in count():
         p_backup = Path(f"{p}.bkp_{i}")
         if not p_backup.exists(follow_symlinks=False):
@@ -94,7 +99,8 @@ def safe_remove(p: Path, verbose_level: VerboseLevel) -> Path:
     if verbose_level >= VerboseLevel.RENAME_FILE:
         print(f"renaming {p} -> {p_backup}")
     p.rename(p_backup)
-    assert not p.exists(follow_symlinks=False)
+    if p.exists(follow_symlinks=False):
+        raise RuntimeError(f"failed to move file: {p}")
     return p_backup
 
 
@@ -109,9 +115,12 @@ def safe_link(src: Path, dst: Path, verbose_level: VerboseLevel) -> None:
         src: Path to the source file/directory to link to
         dst: Path where the symbolic link should be created
         verbose_level: Controls the amount of feedback printed during operation
+
     """
-    src = src.absolute()
-    dst = dst.absolute()
+    if not dst.is_absolute():
+        raise ValueError(f"{dst} is not absolute")
+    if not src.is_absolute():
+        raise ValueError(f"{src} is not absolute")
     is_dir = "/" if src.is_dir() else ""
     if not src.exists(follow_symlinks=True):
         # TODO: maybe here i want to mv dst -> src instead?
@@ -130,8 +139,6 @@ def safe_link(src: Path, dst: Path, verbose_level: VerboseLevel) -> None:
 
 def install_links(
     locations: dict[Path, Path | None],
-    src_dir: Path,
-    dst_dir: Path = Path.home(),
     verbose_level: VerboseLevel = MAX_VERBOSE,
 ) -> None:
     """Install symbolic links according to the locations dictionary.
@@ -142,23 +149,10 @@ def install_links(
 
     Args:
         locations: Dictionary mapping destination paths to source paths
-        src_dir: Base directory containing source files
-        dst_dir: Base directory where links will be created (default: user's home)
         verbose_level: Controls the amount of feedback printed
+
     """
-    # resolve locations
-    locations_full = {
-        dst_dir / dst.expanduser(): src and src_dir / src
-        for dst, src in locations.items()
-    }
-    # check locations
-    for dst, src in locations_full.items():
-        if dst_dir not in dst.parents:
-            raise ValueError(f"only linking files into {dst_dir}, not {dst}")
-        if src is not None and src_dir not in src.parents:
-            raise ValueError(f"only linking files from {src_dir}, not {src}")
-    # create links
-    for dst, src in locations_full.items():
+    for dst, src in locations.items():
         if src is None:
             if dst.exists(follow_symlinks=False):
                 safe_remove(dst, verbose_level)
@@ -166,7 +160,15 @@ def install_links(
             safe_link(src, dst, verbose_level)
 
 
-def read_locations_file(toml_file: Path) -> dict[Path, Path | None]:
+def read_locations_file(
+    toml_file: Path,
+    src_dir: Path,
+    dst_dir: Path = Path.home(),  # noqa: B008
+    *,
+    allow_linking_outside_dst_dir: bool = False,
+    fail_if_relative_dst: bool = False,
+    fail_if_absolute_dst: bool = False,
+) -> dict[Path, Path | None]:
     """Read link specifications from a TOML file.
 
     The TOML file should contain key-value pairs where:
@@ -175,6 +177,8 @@ def read_locations_file(toml_file: Path) -> dict[Path, Path | None]:
 
     Args:
         toml_file: Path to the TOML configuration file
+        src_dir: Base directory containing source files
+        dst_dir: Base directory where links will be created (default: user's home)
 
     Returns:
         Dictionary mapping destination Paths to source Paths or None
@@ -187,26 +191,47 @@ def read_locations_file(toml_file: Path) -> dict[Path, Path | None]:
         ".oldfile" = ""
         ```
     """
-    data = tomllib.load(Path(toml_file).open("rb"))
-    return {Path(dst): Path(src) if src else None for dst, src in data.items()}
+    if fail_if_relative_dst and fail_if_absolute_dst:
+        raise ValueError("Can't require both relative and absolute")
+    with Path(toml_file).open("rb") as f:
+        data = tomllib.load(f)
+    locations = {Path(dst): Path(src) if src else None for dst, src in data.items()}
+    # check dst
+    if fail_if_relative_dst and any(not dst.is_absolute() for dst in locations):
+        raise ValueError("settings require all dst must be absolute")
+    if fail_if_absolute_dst and any(dst.is_absolute() for dst in locations):
+        raise ValueError("settings require all dst must be relative")
+    # check src
+    if any(src is not None and src.is_absolute() for src in locations.values()):
+        raise ValueError("all src must be relative")
+    # resolve locations
+    dst_dir = dst_dir.absolute()
+    src_dir = src_dir.absolute()
+    locations_full = {
+        dst_dir / dst.expanduser(): None if src is None else src_dir / src
+        for dst, src in locations.items()
+    }
+    # check parents
+    if not allow_linking_outside_dst_dir and not all(
+        dst_dir in dst.parents for dst in locations_full
+    ):
+        raise ValueError(f"settings require all dst must be inside {dst_dir}")
+    if not all(
+        src is None or src_dir in src.parents for src in locations_full.values()
+    ):
+        # this should never fail, since we checked that all src in locations are
+        #  relative
+        raise ValueError(f"all src must be inside {src_dir}")
+    # result
+    return locations_full
 
 
-def main() -> None:
-    """Command-line interface for the link installer.
-
-    Provides a command-line interface to read a locations.toml file and install
-    the specified links. The source directory must contain a locations.toml file
-    specifying the links to create.
-
-    Command-line Arguments:
-        SRC_DIR: Directory containing source files and locations.toml
-        -d/--dest_dir: Directory to install links into (default: home directory)
-        -q/--quiet: Reduce verbosity (can be specified multiple times)
-    """
+def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="install links to a list of files")
     parser.add_argument(
         "SRC_DIR",
-        help="Path containing the targets. Must contain `locations.toml`. default: user home dir",
+        help="Path containing the targets. Must contain `locations.toml`. "
+        "default: user home dir",
         type=Path,
     )
     parser.add_argument(
@@ -221,14 +246,30 @@ def main() -> None:
         "--quiet",
         action="count",
         default=0,
-        help=f"Increase quietness level (can be repeated up to {int(MAX_VERBOSE)} times)",
+        help="Increase quietness level "
+        f"(can be repeated up to {int(MAX_VERBOSE)} times)",
     )
-    args = parser.parse_args()
+    return parser.parse_args()
+
+
+def main() -> None:
+    """Command-line interface for the link installer.
+
+    Provides a command-line interface to read a locations.toml file and install
+    the specified links. The source directory must contain a locations.toml file
+    specifying the links to create.
+
+    Command-line Arguments:
+        SRC_DIR: Directory containing source files and locations.toml
+        -d/--dest_dir: Directory to install links into (default: home directory)
+        -q/--quiet: Reduce verbosity (can be specified multiple times)
+    """
+    args = parse_args()
     src_dir = args.SRC_DIR
-    locations = read_locations_file(src_dir / "locations.toml")
     dst_dir = args.dest_dir
     verbose_level = VerboseLevel(MAX_VERBOSE - args.quiet)
-    install_links(locations, src_dir, dst_dir, verbose_level)
+    locations = read_locations_file(src_dir / "locations.toml", src_dir, dst_dir)
+    install_links(locations, verbose_level)
 
 
 if __name__ == "__main__":
