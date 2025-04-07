@@ -75,7 +75,7 @@ repos:
 
   # Python files
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.9.9
+    rev: v0.11.4
     hooks:
       - id: ruff
         alias: ruff-isort
@@ -100,7 +100,7 @@ repos:
 
   # YAML files
   - repo: https://github.com/adrienverge/yamllint
-    rev: v1.36.0
+    rev: v1.37.0
     hooks:
       - id: yamllint
 
