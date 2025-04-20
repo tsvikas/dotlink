@@ -16,8 +16,8 @@ Features:
 Example usage:
     # From command line:
     ``` bash
-    $ python softlink_installer.py ~/my-dotfiles
-    $ python softlink_installer.py ~/my-dotfiles -d /custom/install/path -qq
+    $ python dotlink.py ~/my-dotfiles
+    $ python dotlink.py ~/my-dotfiles -d /custom/install/path -qq
     ```
 
 Configuration:
