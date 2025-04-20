@@ -4,16 +4,13 @@
 # ///
 """Softlink Installation Utility
 
-This module provides functionality to safely install softlinks (symbolic links)
-to a list of files and directories while preserving backups of any existing
-files. It's particularly useful for managing dotfiles or other configuration
-files that need to be linked from a central location to various places in the
-filesystem.
+This script installs softlinks (symbolic links) to files and directories
+from a central location, while preserving backups of any existing files.
+It's particularly useful for managing dotfiles or other configuration files.
 
 Features:
 - Read link specifications from TOML configuration files
 - Create softlinks while safely backing up existing files
-- Remove files (with backup) when needed
 - Provide various levels of verbosity for operation feedback
 
 Example usage:
@@ -21,15 +18,6 @@ Example usage:
     ``` bash
     $ python softlink_installer.py ~/my-dotfiles
     $ python softlink_installer.py ~/my-dotfiles -d /custom/install/path -qq
-    ```
-
-    # As a module:
-    ```python
-    from pathlib import Path
-    from softlink_installer import install_links
-
-    locations = {Path.home() / ".config/app": Path.home() / "dotfiles/app"}
-    install_links(locations)
     ```
 
 Configuration:
@@ -43,11 +31,10 @@ Configuration:
     ".oldfile" = ""
     ```
 
-Notes:
-    - All paths in the TOML file are relative to either the installation base
-      directory (destinations) or the TOML file's parent directory (sources)
-    - Existing files at destination paths are automatically backed up with
-      .bkp_N suffixes where N is an incrementing number
+- All paths in the TOML file are relative to either the installation base
+  directory (destinations) or the TOML file's parent directory (sources)
+- Existing files at destination paths are automatically backed up with
+  .bkp_N suffixes where N is an incrementing number
 
 """
 
