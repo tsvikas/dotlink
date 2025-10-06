@@ -7,7 +7,7 @@ ci:
 repos:
   # General hooks
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
+    rev: v6.0.0
     hooks:
       # Filesystem
       - id: check-illegal-windows-names
@@ -75,7 +75,7 @@ repos:
 
   # Python files
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.12.2
+    rev: v0.13.3
     hooks:
       - id: ruff
         alias: ruff-isort
@@ -85,7 +85,7 @@ repos:
       - id: ruff
         alias: ruff-check
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.16.1
+    rev: v1.18.2
     hooks:
       - id: mypy
 
