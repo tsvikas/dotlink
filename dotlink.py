@@ -29,6 +29,13 @@ Configuration:
     ".local/bin/my-script" = "my-script.py"
     # Empty string means remove the file (with backup)
     ".oldfile" = ""
+    # Conditional link (only on matching hostname)
+    ".ssh/config" = { src = "ssh-config", hostname_glob = "myhost*" }
+    # Multiple candidates (first match wins)
+    ".config/app/local.conf" = [
+        { src = "local-a.conf", hostname_glob = "host-a*" },
+        { src = "local-b.conf", hostname_glob = "host-b*" },
+    ]
     ```
 
 - All paths in the TOML file are relative to either the installation base
@@ -40,6 +47,8 @@ Configuration:
 
 import argparse
 import enum
+import fnmatch
+import socket
 import tomllib
 from itertools import count
 from pathlib import Path
@@ -151,6 +160,34 @@ def install_links(
             safe_link(src, dst, verbose_level)
 
 
+def _resolve_entry(
+    value: str | dict | list, hostname: str, short_hostname: str
+) -> str | None:
+    """Resolve a TOML entry value to a source string (or None to skip).
+
+    Returns:
+        str: source path (may be "")
+        None: entry should be skipped (condition not met)
+    """
+    if isinstance(value, str):
+        return value
+    if isinstance(value, dict):
+        candidates = [value]
+    elif isinstance(value, list):
+        candidates = value
+    else:
+        raise TypeError(f"unexpected TOML value type: {type(value)}")
+    for entry in candidates:
+        pattern = entry.get("hostname_glob")
+        if pattern is None:
+            return entry["src"]
+        if fnmatch.fnmatch(hostname, pattern) or fnmatch.fnmatch(
+            short_hostname, pattern
+        ):
+            return entry["src"]
+    return None
+
+
 def read_locations_file(
     toml_file: Path,
     src_dir: Path,
@@ -164,7 +201,9 @@ def read_locations_file(
 
     The TOML file should contain key-value pairs where:
     - Keys are destination paths (relative to dst_dir)
-    - Values are source paths (relative to src_dir) or "" to remove
+    - Values are source paths (relative to src_dir), "" to remove,
+      inline tables with "src" and optional "hostname_glob" for conditional links,
+      or arrays of such tables (first match wins)
 
     Args:
         toml_file: Path to the TOML configuration file
@@ -173,20 +212,18 @@ def read_locations_file(
 
     Returns:
         Dictionary mapping destination Paths to source Paths or None
-
-    Example TOML content:
-        ```toml
-        ".bashrc" = "rcfiles/bashrc"
-        ".config/app" = "config_folder_for_app"
-        ".local/bin/my-script" = "my-script.py"
-        ".oldfile" = ""
-        ```
     """
     if fail_if_relative_dst and fail_if_absolute_dst:
         raise ValueError("Can't require both relative and absolute")
     with Path(toml_file).open("rb") as f:
         data = tomllib.load(f)
-    locations = {Path(dst): Path(src) if src else None for dst, src in data.items()}
+    hostname = socket.gethostname()
+    short_hostname = hostname.split(".")[0]
+    locations = {}
+    for dst, value in data.items():
+        resolved = _resolve_entry(value, hostname, short_hostname)
+        if resolved is not None:
+            locations[Path(dst)] = Path(resolved) if resolved else None
     # check dst
     if fail_if_relative_dst and any(not dst.is_absolute() for dst in locations):
         raise ValueError("settings require all dst must be absolute")
