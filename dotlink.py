@@ -233,8 +233,8 @@ def read_locations_file(
     if any(src is not None and src.is_absolute() for src in locations.values()):
         raise ValueError("all src must be relative")
     # resolve locations
-    dst_dir = dst_dir.absolute()
-    src_dir = src_dir.absolute()
+    dst_dir = dst_dir.resolve()
+    src_dir = src_dir.resolve()
     locations_full = {
         dst_dir / dst.expanduser(): None if src is None else src_dir / src
         for dst, src in locations.items()
