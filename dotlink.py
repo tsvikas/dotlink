@@ -152,6 +152,8 @@ def install_links(
         verbose_level: Controls the amount of feedback printed
 
     """
+    # Sort by path depth so parent dirs are linked before files inside them
+    # (e.g. .config/fish/ before .config/fish/config-local.fish)
     for dst, src in sorted(locations.items(), key=lambda item: len(item[0].parts)):
         if src is None:
             if dst.exists(follow_symlinks=False):
