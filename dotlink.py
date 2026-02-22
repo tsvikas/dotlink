@@ -152,7 +152,7 @@ def install_links(
         verbose_level: Controls the amount of feedback printed
 
     """
-    for dst, src in locations.items():
+    for dst, src in sorted(locations.items(), key=lambda item: len(item[0].parts)):
         if src is None:
             if dst.exists(follow_symlinks=False):
                 safe_remove(dst, verbose_level)
