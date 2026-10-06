@@ -79,11 +79,10 @@ repos:
       - id: ruff
         alias: ruff-isort
         name: ruff isort
-        args: [--select, I001, --fix, --target-version, py313]
+        args: [--select, I001, --fix]
       - id: ruff-format
       - id: ruff
         alias: ruff-check
-        args: [--target-version, py313]
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v2.4.0
     hooks:
