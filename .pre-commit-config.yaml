@@ -58,7 +58,7 @@ repos:
 
   # Spell checking
   - repo: https://github.com/codespell-project/codespell
-    rev: v2.4.2
+    rev: v2.4.3
     hooks:
       - id: codespell
 
@@ -74,7 +74,7 @@ repos:
 
   # Python files
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.20
+    rev: v0.16.10
     hooks:
       - id: ruff
         alias: ruff-isort
@@ -83,8 +83,9 @@ repos:
       - id: ruff-format
       - id: ruff
         alias: ruff-check
+        args: [--target-version, py313]
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v2.1.0
+    rev: v2.4.0
     hooks:
       - id: mypy
 
